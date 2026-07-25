@@ -1476,12 +1476,30 @@ def lookup_device(device_type: int) -> tuple[str | None, Path | None]:
     for desc_path in sorted(DEVICES_DIR.glob("*.json")):
         try:
             desc = json.loads(desc_path.read_text())
-            dt = desc.get("device_type")
-            if dt is None or int(str(dt), 16) != device_type:
-                continue
-        except (ValueError, OSError, json.JSONDecodeError):
+        except (OSError, ValueError) as e:   # JSONDecodeError is a ValueError
+            log.warning("Ignoring unreadable device descriptor %s: %s", desc_path, e)
             continue
+        if not isinstance(desc, dict):
+            log.warning("Ignoring device descriptor %s: not a JSON object", desc_path)
+            continue
+
+        dt = desc.get("device_type")
+        if dt is None:
+            continue
+        try:
+            # Descriptors store hex strings ("0x20"). Base 0 honours the prefix
+            # rather than reading a bare "32" as hex (= 50).
+            dt_value = dt if isinstance(dt, int) else int(str(dt), 0)
+        except ValueError:
+            log.warning("Ignoring device descriptor %s: bad device_type %r",
+                        desc_path, dt)
+            continue
+        if dt_value != device_type:
+            continue
+
         model = desc.get("model")
+        if not isinstance(model, str) or not model.strip():
+            model = None
         suffix = (model.split()[-1] if model else desc_path.stem.split("-")[-1]).lower()
         candidate = SCRIPT_DIR / "device_maps" / f"device_map_apollo_{suffix}.json"
         return model, (candidate if candidate.exists() else None)
@@ -1511,6 +1529,10 @@ def find_device_map(device_type: int | None = None) -> Path | None:
             log.warning("No device map for %s (device_type 0x%02x) — falling back "
                         "to Apollo x4. Controls/routing may not match this device.",
                         model, device_type)
+        else:
+            log.warning("Unrecognised device_type 0x%02x (no matching descriptor in "
+                        "%s) — falling back to Apollo x4. Controls/routing may not "
+                        "match this device.", device_type, DEVICES_DIR)
 
     # Default location (Apollo x4)
     if DEFAULT_DEVICE_MAP.exists():

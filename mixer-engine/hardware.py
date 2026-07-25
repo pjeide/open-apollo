@@ -1464,7 +1464,10 @@ class HardwareBackend:
             return None
 
         # struct ua_device_info: 8 u32 fields + reserved[8] = 64 bytes.
-        buf = bytearray(_DEVICE_INFO_SIZE)
+        # The buffer must be immutable: given a bytearray, fcntl.ioctl() writes
+        # the reply in place and returns the ioctl's int retcode instead of the
+        # bytes we unpack below (same pattern as get_dsp_info()).
+        buf = bytes(_DEVICE_INFO_SIZE)
         try:
             result = fcntl.ioctl(self.fd, UA_IOCTL_GET_DEVICE_INFO, buf)
         except OSError as e:

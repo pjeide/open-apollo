@@ -141,10 +141,11 @@ The DTrace capture above records the **routing table** (how DMA and DSP channels
 With your Apollo connected and **UA Console** open (so the UA Mixer Engine is serving on port 4710), run the tree dumper from the repo:
 
 ```bash
-python3 mixer-engine/tools/dump_x8p_tree.py --host 127.0.0.1 --out capture.json
+python3 mixer-engine/tools/dump_x8p_tree.py --host 127.0.0.1 \
+    --device-name "Apollo x8p" --out capture.json
 ```
 
-It walks the engine's control tree node by node (a full map is a few MB, so allow ~a minute). Then flatten the raw tree into the daemon's device-map format:
+`--device-name` is the model you are capturing from (`"Apollo Twin X"`, `"Apollo x8"`, …) — it is stamped into the capture and carried through to the device map, so set it to match your hardware. It walks the engine's control tree node by node (a full map is a few MB, so allow ~a minute). Then flatten the raw tree into the daemon's device-map format:
 
 ```bash
 python3 mixer-engine/tools/tree_to_device_map.py capture.json \
