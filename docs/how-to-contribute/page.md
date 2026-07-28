@@ -84,6 +84,46 @@ This runs Dockerfiles in `tests/docker/` for Ubuntu, Fedora, Arch, Debian, openS
 
 ---
 
+## Tier 2c: Add a device descriptor
+
+Each supported model has a descriptor at `devices/apollo-<model>.json`. The mixer daemon reads these to map a driver `device_type` to a model name and its control map, and they double as the record of what has actually been confirmed on that hardware. Adding one for your model is a small, self-contained pull request.
+
+| Field | Meaning | Where to get it |
+|---|---|---|
+| `model` | Display name, e.g. `Apollo x8p` | dmesg banner |
+| `device_type` | Driver type constant, e.g. `"0x20"` | Daemon startup line, or `driver/ua_apollo.h` |
+| `subsystem_id` | PCI subsystem ID, e.g. `"0x0014"` | dmesg banner, or `lspci -nn` |
+| `serial_prefix` | Model group — serial digits **5–8** | Serial (see below) |
+| `serial_leading` | Serial digits **1–4** | Serial (see below) |
+| `channels` | `play` / `rec` counts at 48 kHz | `driver/ua_audio.c` channel table |
+| `preamps` / `hiz` | Analog preamp count, and how many support Hi-Z | Device spec |
+| `features` | Digital I/O present, e.g. `["spdif", "adat"]` | Device spec — mark unconfirmed in `notes` |
+| `status` | `enumerates` (driver binds) or `verified` (audio confirmed) | Your testing |
+| `contributor` | Your GitHub handle | — |
+| `notes` | What you confirmed, and what you did not | — |
+
+Read the identifiers from the kernel log with the device connected:
+
+```bash
+sudo dmesg | grep -iE 'ua_apollo.*(FPGA rev|serial)'
+```
+
+The banner line gives the model name, FPGA revision, `subsys`, DSP count, and firmware version. The `serial:` line gives the full 16-character serial. On macOS or Windows, the UAD System Profile report lists the same serial as `Serial number`.
+
+{% callout type="warning" %}
+**Split the serial at the right place.** The driver matches digits **5–8**, not the leading four — `ua_read_serial_type()` compares at `serial + 4`. For a serial reading `2019 2005 01xxxx`, `serial_prefix` is `2005` and `serial_leading` is `2019`.
+
+Putting the leading digits in `serial_prefix` will misidentify hardware. That exact `2019` belongs to the **x8p** in the driver's serial table, so an Apollo x4 filled in the wrong way claims to be an x8p.
+
+Some models cannot be resolved by serial at all: the x8p's own model group is `2017`, which collides with the x8 entry, which is why it is pinned by PCI subsystem ID instead. If your model's `serial_prefix` matches a different model's table entry in `driver/ua_apollo.h`, say so in `notes` — that collision is useful, not an error to hide.
+{% /callout %}
+
+{% callout type="note" %}
+If you take the serial from a UAD System Profile report, submit only the serial. Do **not** include the `Hardware ID` line — that identifies your plug-in authorizations, not your device. Redacting the tail of the serial (`2019 2005 01xxxx`) is fine and preferred; only the first eight digits are meaningful here.
+{% /callout %}
+
+---
+
 ## Tier 3: Code contributions
 
 We welcome pull requests for bug fixes, new features, and documentation improvements.
