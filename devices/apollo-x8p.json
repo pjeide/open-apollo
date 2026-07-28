@@ -2,7 +2,8 @@
   "model": "Apollo x8p",
   "device_type": "0x20",
   "subsystem_id": "0x0014",
-  "serial_prefix": "2008",
+  "serial_prefix": "2017",
+  "serial_leading": "2008",
   "channels": {
     "play": 26,
     "rec": 26
@@ -12,5 +13,5 @@
   "features": ["spdif", "adat"],
   "status": "verified",
   "contributor": "@Skrypt",
-  "notes": "Detected via PCI subsystem ID 0x0014. serial_prefix above is digits 1-4 of the observed unit ('2008 2017 00xxxx'); the driver's serial table matches digits 5-8, which read '2017' and false-match ->x8, so this model must be pinned by subsystem ID. Audio confirmed on real hardware (issue #46): SG table programmed, SAMPLE_POS/FRAME_CTR advancing, audible playback via PipeWire, no DMAR faults with intel_iommu=on. Required 6016d4e (reset strobe re-clear) + 2df18d5 (SG table on ring-connect devices). Verified since (issue #52): all 8 preamps discrete over ALSA (-144..+65 dB, independent input select), channel identity 1:1 (physical input N -> capture AUX(N-1)), and 26/26 @ 48k full duplex stable over a 60s soak with zero xruns and no IOMMU faults. Inputs 1-2 are front-panel Hi-Z; 3-8 are rear combo, mic/line only, defaulting to Mic. Control map is device_map_apollo_x8p.json (PR #54), so all 8 preamp strips are exposed. Still unverified: rates other than 48k (the driver advertises 48k only), digital I/O and clock — the 'features' list above remains a guess. No routing config for device_type 0x20 — ua_dsp_send_routing() returns -ENODATA, so IO descriptors are never written and channel order is the FPGA default. Tracked in issue #52."
+  "notes": "Detected via PCI subsystem ID 0x0014. Observed serial '2008 2017 00xxxx': serial_prefix is the model group at digits 5-8, which reads 2017 and collides with the x8 entry in the serial table — that collision is exactly why this model cannot be resolved by serial and is pinned by subsystem ID instead. serial_leading is digits 1-4. Audio confirmed on real hardware (issue #46): SG table programmed, SAMPLE_POS/FRAME_CTR advancing, audible playback via PipeWire, no DMAR faults with intel_iommu=on. Required 6016d4e (reset strobe re-clear) + 2df18d5 (SG table on ring-connect devices). Verified since (issue #52): all 8 preamps discrete over ALSA (-144..+65 dB, independent input select), channel identity 1:1 (physical input N -> capture AUX(N-1)), and 26/26 @ 48k full duplex stable over a 60s soak with zero xruns and no IOMMU faults. Inputs 1-2 are front-panel Hi-Z; 3-8 are rear combo, mic/line only, defaulting to Mic. Control map is device_map_apollo_x8p.json (PR #54), so all 8 preamp strips are exposed. Still unverified: rates other than 48k (the driver advertises 48k only), digital I/O and clock — the 'features' list above remains a guess. No routing config for device_type 0x20 — ua_dsp_send_routing() returns -ENODATA, so IO descriptors are never written and channel order is the FPGA default. Tracked in issue #52."
 }

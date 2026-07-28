@@ -2,6 +2,7 @@
   "model": "Apollo x4",
   "device_type": "0x1F",
   "serial_prefix": "2005",
+  "serial_leading": "2019",
   "channels": {
     "play": 24,
     "rec": 22
@@ -11,5 +12,5 @@
   "features": ["spdif", "adat"],
   "status": "verified",
   "contributor": "@rolotrealanis98",
-  "notes": "First verified device. Full duplex audio, all sample rates, preamp controls working."
+  "notes": "First verified device. Full duplex audio, all sample rates, preamp controls working. Observed serial '2019 2005 01xxxx': serial_prefix is the model group at digits 5-8 that ua_read_serial_type() matches, serial_leading is digits 1-4. Note the leading group here is 2019, which is the serial table's entry for the x8p — the leading group is not a model code and must never be matched against that table."
 }

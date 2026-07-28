@@ -104,10 +104,19 @@ static inline bool ua_uses_audio_extension(u32 device_type)
  * Serial prefix register: hardware registers at BAR0 + 0x20..0x2C
  * contain a 16-byte serial string. ASCII digits 5-8 (serial + 4, NOT the
  * leading four) are the model prefix matched by _deviceTypeFromSerialNumber()
- * and by ua_read_serial_type(). The leading four digits are a separate field
- * and differ from the table value — an x8p reading "2008 2017 00xxxx" matches
- * on "2017", which is why the JSON descriptors' serial_prefix (digits 1-4)
- * will not agree with the table entries below.
+ * and by ua_read_serial_type().
+ *
+ * The leading four digits are a separate field whose meaning is unknown, but
+ * they are demonstrably not a model ID: matching against them misidentifies
+ * hardware. Two observed units:
+ *
+ *   Apollo x4   "2019 2005 01xxxx"  -> matches 2005, correct
+ *   Apollo x8p  "2008 2017 00xxxx"  -> matches 2017, collides with x8
+ *
+ * Note the x4's leading group is 2019, which is this table's x8p entry: read
+ * the wrong four digits and a QUAD x4 identifies as an x8p. The x8p's own
+ * model group collides with x8, which is why that model is pinned by
+ * subsystem ID rather than resolved by serial.
  */
 #define UA_REG_SERIAL_BASE          0x0020
 #define UA_REG_SERIAL_LEN           16
