@@ -21,7 +21,7 @@ Open Apollo supports Universal Audio Apollo Thunderbolt and USB interfaces. Thun
 | Apollo x6 Gen 2 | 0x35 | 24 | 22 | 4 | 2 | Needs Testing |
 | Apollo x8 | 0x22 | 26 | 26 | 4 | 2 | Needs Testing |
 | Apollo x8 Gen 2 | 0x37 | 26 | 26 | 4 | 2 | Needs Testing |
-| Apollo x8p | 0x20 | 26 | 26 | 8 | 2 | Needs Testing |
+| Apollo x8p | 0x20 | 26 | 26 | 8 | 2 | **Partially Verified** |
 | Apollo x8p Gen 2 | 0x38 | 26 | 26 | 8 | 2 | Needs Testing |
 | Apollo x16 | 0x21 | 34 | 34 | 8 | 2 | Needs Testing |
 | Apollo x16 Gen 2 | 0x39 | 34 | 34 | 8 | 2 | Needs Testing |
@@ -69,6 +69,31 @@ The Apollo x4 is the primary development and test device. On this model, the fol
 - Monitor volume, mute, dim, mono, talkback
 - DSP mixer routing (analog buses only — digital bus routing untested)
 - ALSA integration with 50+ mixer controls
+
+### Thunderbolt (Apollo x8p)
+
+Confirmed on Fedora 44 / kernel 7.1.4 by contributor @Skrypt:
+
+- Full duplex at **26 in / 26 out, 48 kHz** — stable over a 60-second soak with zero xruns and no IOMMU faults under `intel_iommu=on`
+- All **8 preamps** exposed as independent ALSA capture controls (−144 to +65 dB), each with its own input select and per-channel 48V
+- Channel identity is 1:1 — physical input *N* maps to capture channel `AUX(N-1)`
+- Inputs **1–2** are front-panel Hi-Z; inputs **3–8** are rear combo jacks, mic/line only
+
+{% callout type="warning" %}
+**Rear inputs 3–8 default to Mic.** A ¼" instrument or line-level source on those jacks reads as
+silence until you switch the channel to Line:
+
+```bash
+amixer -c Apollo cset name='Line 3 Input Select' Line
+```
+
+A microphone works out of the box in the default Mic mode. Inputs 1–2 (front, Hi-Z) are unaffected.
+{% /callout %}
+
+Not yet verified on this model: sample rates other than 48 kHz (the driver advertises 48 kHz only),
+digital I/O, and clock selection. The x8p also has **no routing config** yet — `ua_get_routing_config()`
+returns NULL for device type 0x20, so channel order is whatever the FPGA defaults to. Tracked in
+[issue #52](https://github.com/rolotrealanis98/open-apollo/issues/52).
 
 ### USB (Apollo Solo USB)
 
