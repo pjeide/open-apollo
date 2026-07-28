@@ -265,8 +265,9 @@ static const struct ua_serial_entry ua_serial_table[] = {
 
 /*
  * Read serial number from hardware and look up device type.
- * The kext reads BAR0 + 0x20 through 0x2C (4 dwords = 16 bytes)
- * and matches the 4-byte ASCII prefix against the table.
+ * The kext reads BAR0 + 0x20 through 0x2C (4 dwords = 16 bytes) and matches
+ * the 4-byte ASCII model prefix at offset +4 (digits 5-8) against the table —
+ * not the leading four digits.
  */
 static void ua_read_serial_type(struct ua_device *ua)
 {
@@ -282,7 +283,7 @@ static void ua_read_serial_type(struct ua_device *ua)
 
 	dev_info(&ua->pdev->dev, "serial: %.16s\n", serial);
 
-	/* Match 4-char prefix against lookup table */
+	/* Match the 4-char model prefix at digits 5-8 against the lookup table */
 	for (i = 0; i < ARRAY_SIZE(ua_serial_table); i++) {
 		if (!strncmp(serial + 4, ua_serial_table[i].prefix, 4)) {
 			ua->device_type = ua_serial_table[i].device_type;

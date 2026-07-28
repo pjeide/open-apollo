@@ -55,7 +55,9 @@
 /* v2 Thunderbolt device types (from serial prefix table) */
 #define UA_DEV_APOLLO_X6            0x1E  /* Serial 2016 */
 #define UA_DEV_APOLLO_X4            0x1F  /* Serial 2005 */
-#define UA_DEV_APOLLO_X8P           0x20  /* Serial 2019 */
+#define UA_DEV_APOLLO_X8P           0x20  /* Serial 2019; observed unit reads
+                                           * "2017" here and false-matches x8 —
+                                           * pinned by subsys 0x0014 instead */
 #define UA_DEV_APOLLO_X16           0x21  /* Serial 2018 */
 #define UA_DEV_APOLLO_X8            0x22  /* Serial 2017 */
 #define UA_DEV_APOLLO_TWIN_X        0x23  /* Serial 2020 */
@@ -100,8 +102,12 @@ static inline bool ua_uses_audio_extension(u32 device_type)
 
 /*
  * Serial prefix register: hardware registers at BAR0 + 0x20..0x2C
- * contain a 16-byte serial string. The first 4 ASCII digits identify
- * the device model and are used by _deviceTypeFromSerialNumber().
+ * contain a 16-byte serial string. ASCII digits 5-8 (serial + 4, NOT the
+ * leading four) are the model prefix matched by _deviceTypeFromSerialNumber()
+ * and by ua_read_serial_type(). The leading four digits are a separate field
+ * and differ from the table value — an x8p reading "2008 2017 00xxxx" matches
+ * on "2017", which is why the JSON descriptors' serial_prefix (digits 1-4)
+ * will not agree with the table entries below.
  */
 #define UA_REG_SERIAL_BASE          0x0020
 #define UA_REG_SERIAL_LEN           16
