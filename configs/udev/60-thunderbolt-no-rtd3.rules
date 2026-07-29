@@ -1,0 +1,37 @@
+# Keep the Thunderbolt controller and its hotplug ports out of D3cold.
+#
+# On desktop Thunderbolt add-in cards (e.g. ASUS ThunderboltEX with Intel
+# Maple Ridge), the TB bridge, its downstream ports and the NHI runtime-suspend
+# to D3cold when no device is attached. A downstream port in D3cold is powered
+# off, so pciehp never sees the presence-detect change: powering on an Apollo
+# produces NO hotplug event at all. Only a cold boot with the unit already
+# powered ever enumerates it.
+#
+# Pinning runtime PM off and disallowing D3cold keeps the ports responsive so
+# hot-plug is detected. Cost: the Thunderbolt controller no longer sleeps
+# (a few watts idle) -- a fair trade on a desktop, and a no-op on machines
+# where the ports were already awake.
+#
+# 0x1136 = Thunderbolt 4 Bridge -- matches both the upstream bridge and every
+#          downstream hotplug port, i.e. the whole presence-detect path.
+# 0x1137 = Thunderbolt 4 NHI -- the TB host controller. Needed because the
+#          connection manager sets up the PCIe tunnel through it; a sleeping
+#          NHI means no tunnel even if the port did notice the plug.
+#
+# The Maple Ridge TB USB controller (0x1138) is deliberately NOT matched. It is
+# a child of a downstream port, not a peer of the bridge, so it is not in the
+# presence-detect path, and it shares no power domain with the functions above:
+# with it set back to auto / d3cold_allowed=1 and actually runtime-suspended,
+# the bridge, its ports and the NHI all stay `active`. Leaving it alone lets
+# the tunnelled xHCI sleep as usual.
+#
+# Verified on Fedora 44 / kernel 7.1.4, ASUS ThunderboltEX add-in card, with an
+# Apollo x8p (Thunderbolt 3 Option Card): before, hot-plug produced no kernel
+# event whatsoever; after, the device enumerates live, ua_apollo binds, and the
+# pro-audio node comes up -- no reboot required.
+#
+# Note this cannot be fixed from inside the driver: the driver is not bound
+# until its device exists, and the device cannot appear while the port is off.
+
+ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x8086", ATTR{device}=="0x113[67]", \
+  ATTR{power/control}="on", ATTR{d3cold_allowed}="0"

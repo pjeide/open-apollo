@@ -98,12 +98,20 @@ if [ -f "$UDEV_DIR/91-ua-apollo.rules" ]; then
     cp "$UDEV_DIR/open-apollo-setup-worker" /usr/local/bin/
     chmod +x /usr/local/bin/open-apollo-setup-worker
     echo "  -> /usr/local/bin/open-apollo-setup-worker"
-
-    udevadm control --reload-rules 2>/dev/null || true
-    echo "  udev rules reloaded"
 else
     echo "  Warning: udev rules not found, skipping"
 fi
+
+# Thunderbolt hot-plug: keep the TB ports out of D3cold, or powering on an
+# Apollo generates no PCIe hotplug event at all (see the rule's comments).
+# Independent of the hotplug helper rule above -- it must install on its own.
+if [ -f "$UDEV_DIR/60-thunderbolt-no-rtd3.rules" ]; then
+    cp "$UDEV_DIR/60-thunderbolt-no-rtd3.rules" /etc/udev/rules.d/
+    echo "  -> /etc/udev/rules.d/60-thunderbolt-no-rtd3.rules"
+fi
+
+udevadm control --reload-rules 2>/dev/null || true
+echo "  udev rules reloaded"
 
 echo ""
 echo "=== Deployment complete ==="

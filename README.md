@@ -71,6 +71,7 @@ USB support uses `sudo bash scripts/install-usb.sh`. See [USB Quick Start](#usb-
 | **Audacity ALSA-only** — Ubuntu's Audacity package lacks PipeWire backend | Minor | Install Audacity via Flatpak for PipeWire support |
 | **GNOME Sound Settings** — input level meter may not show activity | Cosmetic | Audio works; meter is a GNOME UI limitation with pro-audio devices |
 | **Warm reboot requires Apollo power cycle** — rebooting Linux while Apollo stays powered leaves firmware in a stale state; audio won't work until Apollo is power-cycled | Moderate | After reboot: turn Apollo off, wait 5s, turn back on. Hot-replug auto-recovers within ~7s. Cold boot (Apollo powered on after Linux) works without issues. |
+| **No hot-plug on desktop Thunderbolt add-in cards** — powering on the Apollo while Linux runs produces no PCIe hotplug event at all; only cold boot enumerates it. The TB bridge/NHI/ports runtime-suspend to D3cold, and a port in D3cold cannot signal presence-detect | Moderate | Fixed by `configs/udev/60-thunderbolt-no-rtd3.rules` (deployed by `configs/deploy.sh`), which pins the Maple Ridge bridge/ports (`0x1136`) and NHI (`0x1137`) to `power/control=on` and `d3cold_allowed=0` |
 
 ## App Compatibility
 
