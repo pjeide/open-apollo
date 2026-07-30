@@ -667,7 +667,16 @@ run_sudo chmod +x "$UA_USB_BIN/ua-usb-init" "$UA_USB_BIN/ua-usb-dsp-init"
 run_sudo cp "$PROJECT_DIR/configs/udev/99-apollo-usb.rules" "$UDEV_DIR/"
 run_sudo udevadm control --reload-rules 2>/dev/null || true
 
-ok "udev rules installed — Apollo will auto-init on power-on/reboot"
+# Init runs via systemd (TAG+="systemd", ENV{SYSTEMD_WANTS}=...), not
+# RUN+=, because systemd-udevd.service's own sandbox (MemoryDenyWriteExecute,
+# restrictive SystemCallFilter) is inherited by RUN+= children and breaks
+# Python's import of pyusb. See configs/udev/99-apollo-usb.rules for details.
+info "Installing systemd units for udev-triggered init..."
+run_sudo cp "$PROJECT_DIR/configs/systemd/ua-usb-init@.service" /etc/systemd/system/
+run_sudo cp "$PROJECT_DIR/configs/systemd/ua-usb-dsp-init.service" /etc/systemd/system/
+run_sudo systemctl daemon-reload
+
+ok "udev rules + systemd units installed — Apollo will auto-init on power-on/reboot"
 info "Firmware must be in $FW_DIR/ for auto-load to work"
 
 # ================================================================
