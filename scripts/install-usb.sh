@@ -911,7 +911,10 @@ if [ -t 0 ]; then
     echo ""
     prompt TELEM_ANSWER "Help improve Open Apollo — send anonymous install report? [y/N] "
 else
-    TELEM_ANSWER="y"
+    # Locally patched: do not silently opt in to telemetry when running
+    # non-interactively. Upstream defaults this to "y" for non-tty runs;
+    # we require explicit consent instead.
+    TELEM_ANSWER="n"
 fi
 
 if [[ "${TELEM_ANSWER:-n}" =~ ^[Yy] ]]; then
