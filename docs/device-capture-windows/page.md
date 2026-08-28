@@ -116,7 +116,7 @@ Copy the `.pcapng` to your Linux machine (`tshark` must be installed there too),
 python3 tools/usb-re/pcap-init-extract.py apollo-init.pcapng -o apollo-init.seq
 ```
 
-It finds the live Apollo in the capture by PID, prints the number of bulk and control events, and a phase table. Two warnings matter: *no firmware download* means it was not a cold start; *no control transfers* means the sequence is roughly half the init.
+It finds the live Apollo in the capture by PID, prints the number of bulk and control events, and a phase table with the registers each phase writes. The last line names the phase that carries the plugin-chain upload (register `0x000C`) — note it, because phase numbers are a property of *your* capture (they come from where the driver paused), not of the protocol. Two warnings matter: *no firmware download* means it was not a cold start; *no control transfers* means the sequence is roughly half the init.
 
 Replay it with the Apollo connected, firmware loaded, and the device **idle for at least 30 seconds** after it re-enumerated with its live PID — started earlier, a cold DSP acknowledges the whole sequence and silently skips the plugin chain:
 
@@ -125,7 +125,9 @@ sudo python3 tools/usb-re/init-replay.py apollo-init.seq --dry-run   # look firs
 sudo python3 tools/usb-re/init-replay.py apollo-init.seq             # replay every phase
 ```
 
-A good run reports `0 errors` and several hundred responses, most of them in the final (plugin-chain) phase. Then check capture with `arecord -l` / PipeWire as usual. `--phases 0-5` replays only the bring-up (converters, routing, monitoring) without the chain.
+A good run reports `0 errors` and several hundred responses, most of them in the plugin-chain phase. Then check capture with `arecord -l` / PipeWire as usual. To bring the device up **without** the plugin chain (converters, routing, monitoring only), replay every phase before the one the tool named — e.g. `--phases 0-9` if it said the chain is phase 10.
+
+What comes up is exactly what Console had loaded when you captured: the same Unison preamp, inserts and settings, frozen. To change the chain, change it in Console and capture again.
 
 The sequence is specific to your model and firmware build; replaying a Twin's sequence on a Solo, or across a firmware update, is not expected to work.
 
