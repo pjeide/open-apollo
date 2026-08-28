@@ -143,6 +143,45 @@ def extract(pcap, addr, start, end):
     return events, fw_frames
 
 
+def phase_registers(records):
+    """Count bulk entries per register per phase.
+
+    records: iterable of (phase, flags, payload_bytes) for bulk packets in
+    order.  Entries are walked with their real length ((reg << 16) |
+    wordcount, wordcount inclusive) and may continue across packets within
+    the same flags stream, so a partial entry carried over from the previous
+    packet of that stream is skipped rather than misread.  An entry counts
+    toward the phase of the packet it starts in.
+    """
+    per_phase = collections.defaultdict(collections.Counter)
+    carry = {}                      # flags -> dwords still owed to an open entry
+    for phase, flags, payload in records:
+        words = struct.unpack_from("<%dI" % (len(payload) // 4), payload, 0)
+        i = carry.get(flags, 0)
+        if i >= len(words):
+            carry[flags] = i - len(words)
+            continue
+        while i < len(words):
+            wc = words[i] & 0xFFFF
+            if wc == 0:
+                break
+            per_phase[phase][words[i] >> 16] += 1
+            i += wc
+        carry[flags] = max(0, i - len(words))
+    return per_phase
+
+
+def describe_phases(per_phase):
+    """Return ({phase: 'top registers'}, chain_phase_or_None)."""
+    top = {}
+    for phase, regs in per_phase.items():
+        top[phase] = " ".join("0x%04x:%d" % (r, n) for r, n in regs.most_common(3))
+    chain = max(per_phase, key=lambda p: per_phase[p][0x000C], default=None)
+    if chain is not None and per_phase[chain][0x000C] < 100:
+        chain = None
+    return top, chain
+
+
 def write_seq(events, out, gap):
     recs = []
     phase = 0
@@ -206,10 +245,21 @@ def main():
     for _, ph, e in recs:
         if e[1] == 1:
             ctrl[ph][f"bReq{e[3]}"] += 1
-    print("PHASE   BULK  CTRL  control detail")
+    top, chain = describe_phases(phase_registers(
+        (ph, e[6][1], e[6][4:]) for _, ph, e in recs if e[1] == 0))
+    print("PHASE   BULK  CTRL  top registers            control detail")
     for ph in sorted({p for p, _ in counts}):
         detail = " ".join(f"{k}:{v}" for k, v in sorted(ctrl[ph].items()))
-        print(f"  {ph:3d} {counts.get((ph, 0), 0):6d} {counts.get((ph, 1), 0):5d}  {detail}")
+        print(f"  {ph:3d} {counts.get((ph, 0), 0):6d} {counts.get((ph, 1), 0):5d}  "
+              f"{top.get(ph, ''):<24} {detail}")
+    # Phase numbers depend on where this capture's driver happened to pause,
+    # so say which phase is the plugin-chain upload instead of assuming one.
+    if chain is not None:
+        print(f"plugin chain (reg 0x000c) is phase {chain}; "
+              f"--phases 0-{chain - 1} on init-replay.py is the bring-up without it")
+    else:
+        print("no plugin-chain upload (reg 0x000c) found — Console had no plugins loaded, "
+              "or the capture stopped early")
 
 
 if __name__ == "__main__":

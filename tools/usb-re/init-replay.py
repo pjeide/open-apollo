@@ -68,6 +68,45 @@ def read_seq(path):
     return events
 
 
+def phase_registers(records):
+    """Count bulk entries per register per phase.
+
+    records: iterable of (phase, flags, payload_bytes) for bulk packets in
+    order.  Entries are walked with their real length ((reg << 16) |
+    wordcount, wordcount inclusive) and may continue across packets within
+    the same flags stream, so a partial entry carried over from the previous
+    packet of that stream is skipped rather than misread.  An entry counts
+    toward the phase of the packet it starts in.
+    """
+    per_phase = collections.defaultdict(collections.Counter)
+    carry = {}                      # flags -> dwords still owed to an open entry
+    for phase, flags, payload in records:
+        words = struct.unpack_from("<%dI" % (len(payload) // 4), payload, 0)
+        i = carry.get(flags, 0)
+        if i >= len(words):
+            carry[flags] = i - len(words)
+            continue
+        while i < len(words):
+            wc = words[i] & 0xFFFF
+            if wc == 0:
+                break
+            per_phase[phase][words[i] >> 16] += 1
+            i += wc
+        carry[flags] = max(0, i - len(words))
+    return per_phase
+
+
+def describe_phases(per_phase):
+    """Return ({phase: 'top registers'}, chain_phase_or_None)."""
+    top = {}
+    for phase, regs in per_phase.items():
+        top[phase] = " ".join("0x%04x:%d" % (r, n) for r, n in regs.most_common(3))
+    chain = max(per_phase, key=lambda p: per_phase[p][0x000C], default=None)
+    if chain is not None and per_phase[chain][0x000C] < 100:
+        chain = None
+    return top, chain
+
+
 def parse_phases(spec, available):
     if spec == "all":
         return set(available)
@@ -114,10 +153,15 @@ def main():
         for delta, ph, kind, *_ in events:
             per[ph][kind] += 1
             per[ph][2] += delta
-        print("PHASE   BULK  CTRL  captured seconds")
+        top, chain = describe_phases(phase_registers(
+            (ph, data[1], data[4:]) for _, ph, kind, _b, _r, _v, _i, data in events if kind == 0))
+        print("PHASE   BULK  CTRL  captured s  top registers")
         for ph in phases_present:
             mark = "" if ph in want else "   (skipped)"
-            print(f"  {ph:3d} {per[ph][0]:6d} {per[ph][1]:5d} {per[ph][2]:10.2f}{mark}")
+            print(f"  {ph:3d} {per[ph][0]:6d} {per[ph][1]:5d} {per[ph][2]:10.2f}  "
+                  f"{top.get(ph, ''):<24}{mark}")
+        if chain is not None:
+            print(f"plugin chain (reg 0x000c) is phase {chain}")
         for delta, ph, kind, brt, breq, wv, wi, data in sel:
             if kind == 1:
                 print(f"  phase {ph}: CTRL bmRequestType=0x{brt:02x} bReq={breq} "
