@@ -32,7 +32,7 @@ LIVE_PIDS = {
 }
 
 
-def find_device():
+def find_live_device():
     """Return (device, model_name) for whichever live Apollo USB is present."""
     for pid, name in LIVE_PIDS.items():
         dev = usb.core.find(idVendor=UA_VID, idProduct=pid)
@@ -57,7 +57,7 @@ def setting_word(mask, value):
 
 
 def find_device():
-    dev, model = find_device()
+    dev, model = find_live_device()
     if not dev:
         print("No live Apollo USB device found "
               "(expected one of: %s)" %
